@@ -25,17 +25,17 @@ def init_conf():
     if 'MQTT' not in conf.sections():
         conf.add_section("MQTT")
     if 'MQTTHOST' not in conf.options('MQTT'):
-        conf.set("MQTT", "MQTTHOST", "mqtt.obsesse.site")
+        conf.set("MQTT", "MQTTHOST", “你的mqtt服务器地址")
     if 'MQTTPORT' not in conf.options('MQTT'):
         conf.set("MQTT", "MQTTPORT", "1883")
     if 'MQTTUSER' not in conf.options('MQTT'):
-        conf.set("MQTT", "MQTTUSER", 'pythontest')
+        conf.set("MQTT", "MQTTUSER", 'mqtt用户名（看你的设置情况）')
     if 'MQTTPASSWD' not in conf.options('MQTT'):
-        conf.set("MQTT", "MQTTPASSWD", "wang2020.")
+        conf.set("MQTT", "MQTTPASSWD", "mqtt用户密码")
     if 'ClientNAME' not in conf.options('MQTT'):
-        conf.set("MQTT", "ClientNAME", "pythontest")
+        conf.set("MQTT", "ClientNAME", "mqt客户端名（我不待见一长串认不清的）")
     if 'Topic' not in conf.options('MQTT'):
-        conf.set("MQTT", "Topic", "/pythontest/user/subscribe")
+        conf.set("MQTT", "Topic", "/pythontest/user/subscribe") 
     conf.write(open(configPath, 'w+'))
 
     global MQTTHOST, MQTTPORT, MQTTUSER, MQTTUSER, MQTTPASSWD, ClientNAME, Topic, mqttClient, mqttClient
