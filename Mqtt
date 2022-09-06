@@ -1,0 +1,113 @@
+# encoding: utf-8
+
+import socket
+import binascii
+import re
+import os
+import sys
+import configparser
+import paho.mqtt.client as mqtt
+
+
+def init_conf():
+    # 当前文件路径
+    path = sys.argv[0]
+    #filename = os.path.basename(path)  # 获取本文件名
+    proDir = os.path.dirname(os.path.realpath(sys.argv[0]))
+
+    # 在当前文件路径下查找.ini文件
+    configPath = os.path.join(proDir, "WakeByMqtt.ini")
+    print('配置文件路径:\n' + configPath)
+    conf = configparser.ConfigParser()
+    conf.read(configPath)
+
+    # 检测section
+    if 'MQTT' not in conf.sections():
+        conf.add_section("MQTT")
+    if 'MQTTHOST' not in conf.options('MQTT'):
+        conf.set("MQTT", "MQTTHOST", "mqtt.obsesse.site")
+    if 'MQTTPORT' not in conf.options('MQTT'):
+        conf.set("MQTT", "MQTTPORT", "1883")
+    if 'MQTTUSER' not in conf.options('MQTT'):
+        conf.set("MQTT", "MQTTUSER", 'pythontest')
+    if 'MQTTPASSWD' not in conf.options('MQTT'):
+        conf.set("MQTT", "MQTTPASSWD", "wang2020.")
+    if 'ClientNAME' not in conf.options('MQTT'):
+        conf.set("MQTT", "ClientNAME", "pythontest")
+    if 'Topic' not in conf.options('MQTT'):
+        conf.set("MQTT", "Topic", "/pythontest/user/subscribe")
+    conf.write(open(configPath, 'w+'))
+
+    global MQTTHOST, MQTTPORT, MQTTUSER, MQTTUSER, MQTTPASSWD, ClientNAME, Topic, mqttClient, mqttClient
+    MQTTHOST = conf.get("MQTT", "MQTTHOST")
+    MQTTPORT = conf.getint("MQTT", "MQTTPORT")
+    MQTTUSER = conf.get("MQTT", "MQTTUSER")
+    MQTTPASSWD = conf.get("MQTT", "MQTTPASSWD")
+    ClientNAME = conf.get("MQTT", "ClientNAME")
+    Topic = conf.get("MQTT", "Topic")
+
+    mqttClient = mqtt.Client(ClientNAME)
+    mqttClient.username_pw_set(MQTTUSER, MQTTPASSWD)
+
+# 连接MQTT服务器
+def on_mqtt_connect():
+    mqttClient.connect(MQTTHOST, MQTTPORT, 60)
+    print('\nmqtt服务器配置\nHOST:   ' + MQTTHOST + '\nPort:   ' + str(MQTTPORT) +
+          '\nUser:   ' + MQTTUSER + '\nClient: ' + ClientNAME)
+    mqttClient.loop_start()
+
+# 消息处理函数
+def on_message_come(lient, userdata, msg):
+    # print(msg.topic + " " + ":" + str(msg.payload))
+    # send_magic_packet(str(msg.payload)[2:19])
+    tempa = str(msg.payload).split(',')
+    send_magic_packet(tempa[0][2:], tempa[1], int(tempa[2][:-1]))
+
+# 接收subscribe消息
+def on_subscribe():
+    print("订阅:   " + Topic)
+    # 订阅监听自定义Topic
+    mqttClient.subscribe(Topic, 1)
+    mqttClient.on_message = on_message_come  # 消息到来处理函数
+
+# 格式化MAC地址
+def format_mac(mac):
+    mac_re = re.compile(r'''
+                      (^([0-9A-F]{1,2}[-]){5}([0-9A-F]{1,2})$
+                      |^([0-9A-F]{1,2}[:]){5}([0-9A-F]{1,2})$
+                      |^([0-9A-F]{1,2}[.]){5}([0-9A-F]{1,2})$
+                      )''', re.VERBOSE | re.IGNORECASE)
+    # print(re.match(mac_re, mac))
+    if re.match(mac_re, mac):
+        if mac.count(':') == 5 or mac.count('-') == 5 or mac.count('.'):
+            sep = mac[2]
+            mac_fm = mac.replace(sep, '')
+            return mac_fm
+    else:
+        raise ValueError('Incorrect MAC format')
+
+# 创建唤醒包
+def create_magic_packet(magic_mac):
+    mac = format_mac(magic_mac)
+    data = 'FF' * 6 + str(mac) * 16
+    send_data = binascii.unhexlify(data)
+    # print(type(send_data))
+    return send_data
+
+# 发送唤醒包
+def send_magic_packet(Magic_Mac, Magic_IP='192.168.8.255', Magic_Port=9):
+    if Magic_IP == '':
+        Magic_IP = '192.168.8.255'
+    send_data = create_magic_packet(Magic_Mac)
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+    s.sendto(send_data, (Magic_IP, Magic_Port))
+    print("唤醒MAC:" + Magic_Mac + "  ip:" +
+          Magic_IP + "  端口:" + str(Magic_Port))
+
+if __name__ == '__main__':
+    init_conf()
+    on_mqtt_connect()
+    on_subscribe()
+    while True:
+        pass
